@@ -59,7 +59,7 @@ async function pullAndMerge() {
     }
     if (useRemote) {
       clearTimeout(syncTimer);
-      S = Object.assign(defaultState(), remote);
+      S = sanitize(remote);
       save(false);
       rerenderAll();
     } else if (localT !== remoteT || firstTime) {

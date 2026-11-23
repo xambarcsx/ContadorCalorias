@@ -22,11 +22,67 @@ let S = load();
 let currentDate = ymd(new Date());
 
 function load() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return Object.assign(defaultState(), JSON.parse(raw));
-  } catch (e) { /* almacenamiento no disponible */ }
-  return defaultState();
+  let raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) { /* almacenamiento no disponible */ }
+  if (!raw) return defaultState();
+  try { return sanitize(JSON.parse(raw)); }
+  catch (e) {
+    // Datos dañados: guarda una copia antes de empezar de cero para no perderlos
+    console.error('No se pudieron leer los datos guardados', e);
+    try { localStorage.setItem(KEY + '-dañado', raw); } catch (e2) {}
+    return defaultState();
+  }
+}
+
+/* Limpia los datos (del navegador o de la nube) antes de usarlos: los números
+   se vuelven números, las fechas se validan y la rutina se reconstruye desde su
+   configuración. Así un dato alterado no puede inyectar código en la página. */
+function sanitize(d) {
+  const num = v => (v == null || v === '' || !Number.isFinite(+v) ? null : +v);
+  const isDate = k => /^\d{4}-\d{2}-\d{2}$/.test(k);
+  const obj = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+  const src = obj(d);
+  const s = defaultState();
+  s._updated = num(src._updated) || 0;
+
+  const p = src.profile && typeof src.profile === 'object' ? src.profile : null;
+  if (p) {
+    s.profile = { sexo: p.sexo === 'm' ? 'm' : 'h' };
+    for (const k of ['edad', 'peso', 'altura', 'actividad', 'objetivo', 'grasa', 'rm', 'visceral', 'musculo']) s.profile[k] = num(p[k]);
+    if (!s.profile.peso || !s.profile.altura || !s.profile.edad || !s.profile.actividad) s.profile = null;
+    else s.profile.objetivo = s.profile.objetivo || 0;
+  }
+  if (src.override && typeof src.override === 'object') {
+    s.override = {};
+    for (const k of ['kcal', 'prot', 'carbs', 'fat']) s.override[k] = num(src.override[k]) || 0;
+  }
+  for (const [date, list] of Object.entries(obj(src.logs))) {
+    if (!isDate(date) || !Array.isArray(list)) continue;
+    const clean = list.filter(e => e && MEALS.includes(e.meal)).map(e => ({
+      id: String(e.id || Math.random().toString(36).slice(2)), meal: e.meal, name: String(e.name || ''), amount: e.amount != null ? String(e.amount) : undefined,
+      g: num(e.g) || 0, k: num(e.k) || 0, p: num(e.p) || 0, c: num(e.c) || 0, f: num(e.f) || 0,
+    }));
+    if (clean.length) s.logs[date] = clean;
+  }
+  for (const [date, v] of Object.entries(obj(src.water))) if (isDate(date) && num(v) > 0) s.water[date] = Math.round(num(v));
+  s.customFoods = (Array.isArray(src.customFoods) ? src.customFoods : []).filter(f => f && f.n).map(f => ({
+    n: String(f.n), k: num(f.k) || 0, p: num(f.p) || 0, c: num(f.c) || 0, f: num(f.f) || 0,
+    ...(Array.isArray(f.por) && num(f.por[1]) > 0 ? { por: [String(f.por[0]), num(f.por[1])] } : {}),
+  }));
+  s.recent = (Array.isArray(src.recent) ? src.recent : []).map(String).slice(0, 8);
+  s.weights = (Array.isArray(src.weights) ? src.weights : []).filter(w => w && isDate(w.date) && num(w.kg) > 0).map(w => {
+    const o = { date: w.date, kg: num(w.kg) };
+    for (const k of ['fat', 'rm', 'visc', 'musc']) if (num(w[k]) != null) o[k] = num(w[k]);
+    return o;
+  });
+  const cfg = src.routine && obj(src.routine.cfg);
+  if (cfg && SPLITS[cfg.dias] && SCHEMES[cfg.enfoque] && ['principiante', 'intermedio', 'avanzado'].includes(cfg.nivel) && ['gym', 'manc', 'casa'].includes(cfg.equipo)) {
+    s.routine = buildRoutine({ dias: +cfg.dias, nivel: cfg.nivel, enfoque: cfg.enfoque, equipo: cfg.equipo });
+    if (isDate(src.routine.created)) s.routine.created = src.routine.created;
+  }
+  for (const [date, v] of Object.entries(obj(src.workouts))) if (isDate(date) && Number.isInteger(v) && v >= 0) s.workouts[date] = v;
+  for (const [name, v] of Object.entries(obj(src.lifts))) if (num(v) > 0) s.lifts[name] = num(v);
+  return s;
 }
 // touch=false guarda solo en el navegador sin marcar cambios (se usa al bajar datos de la nube)
 function save(touch = true) {
@@ -531,7 +587,7 @@ function renderRoutine() {
     ${R.days.map((day, i) => {
       const ld = lastDone(i);
       return `<div class="card day-card">
-        <h3>Día ${i + 1}: ${esc(day.name)} <small>${day.when}</small></h3>
+        <h3>Día ${i + 1}: ${esc(day.name)} <small>${esc(day.when)}</small></h3>
         <table class="ex-table"><tbody>
           ${day.ex.map(ex => `<tr>
             <td><div class="ex-name">${esc(ex.name)}</div>
