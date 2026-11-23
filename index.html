@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#16a34a">
+  <title>Contador de Macros</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Macros<span>&amp;Gym</span></h1>
+    <span class="sync-dot off" id="syncDot" data-goto="perfil" role="button" aria-label="Estado de sincronización"></span>
+  </header>
+
+  <main>
+    <!-- ============ HOY ============ -->
+    <section id="tab-hoy" class="tab active">
+      <div class="datenav">
+        <button class="icon-btn" id="prevDay" aria-label="Día anterior">‹</button>
+        <button class="date-label" id="dateLabel"></button>
+        <button class="icon-btn" id="nextDay" aria-label="Día siguiente">›</button>
+      </div>
+
+      <div id="noProfile" class="card notice hidden">
+        <p>Primero configura tu perfil para calcular tus calorías y macros.</p>
+        <button class="btn primary" data-goto="perfil">Configurar perfil</button>
+      </div>
+
+      <div class="card summary" id="summary">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 120 120" class="ring">
+            <circle cx="60" cy="60" r="52" class="ring-bg"/>
+            <circle cx="60" cy="60" r="52" class="ring-fg" id="ringFg"/>
+          </svg>
+          <div class="ring-text">
+            <strong id="kcalLeft">0</strong>
+            <small id="kcalLeftLabel">kcal restantes</small>
+          </div>
+        </div>
+        <div class="summary-side">
+          <div class="kcal-line"><span>Consumidas</span><b id="kcalEaten">0</b></div>
+          <div class="kcal-line"><span>Objetivo</span><b id="kcalTarget">0</b></div>
+          <div class="macro-bars" id="macroBars"></div>
+        </div>
+      </div>
+
+      <div class="card water">
+        <div>
+          <b>Agua</b>
+          <small id="waterText">0 / 0 ml</small>
+        </div>
+        <div class="water-btns">
+          <button class="icon-btn" id="waterMinus" aria-label="Quitar vaso">−</button>
+          <span id="waterGlasses">0</span>
+          <button class="icon-btn" id="waterPlus" aria-label="Agregar vaso de 250 ml">+</button>
+        </div>
+      </div>
+
+      <div id="meals"></div>
+
+      <button class="btn ghost full" id="copyYesterday">Copiar comidas del día anterior</button>
+    </section>
+
+    <!-- ============ PERFIL ============ -->
+    <section id="tab-perfil" class="tab">
+      <form class="card" id="profileForm">
+        <h2>Tu perfil</h2>
+        <div class="grid2">
+          <label>Sexo
+            <select name="sexo" required>
+              <option value="h">Hombre</option>
+              <option value="m">Mujer</option>
+            </select>
+          </label>
+          <label>Edad
+            <input name="edad" type="number" min="14" max="99" required inputmode="numeric">
+          </label>
+          <label>Peso (kg)
+            <input name="peso" type="number" min="30" max="300" step="0.1" required inputmode="decimal">
+          </label>
+          <label>Altura (cm)
+            <input name="altura" type="number" min="120" max="230" required inputmode="numeric">
+          </label>
+        </div>
+        <label>Nivel de actividad
+          <select name="actividad">
+            <option value="1.2">Sedentario (oficina, poco movimiento)</option>
+            <option value="1.375">Ligero (ejercicio 1-3 días/semana)</option>
+            <option value="1.55" selected>Moderado (ejercicio 3-5 días/semana)</option>
+            <option value="1.725">Activo (ejercicio 6-7 días/semana)</option>
+            <option value="1.9">Muy activo (trabajo físico + entrenamiento)</option>
+          </select>
+        </label>
+        <label>Objetivo
+          <select name="objetivo">
+            <option value="-25">Perder grasa — agresivo (−25%)</option>
+            <option value="-20" selected>Perder grasa — moderado (−20%)</option>
+            <option value="-10">Perder grasa — suave (−10%)</option>
+            <option value="0">Mantener peso</option>
+            <option value="5">Ganar músculo — limpio (+5%)</option>
+            <option value="10">Ganar músculo (+10%)</option>
+            <option value="15">Ganar músculo — rápido (+15%)</option>
+          </select>
+        </label>
+        <fieldset class="scale">
+          <legend>Datos de tu báscula <small>(opcional, mejora la precisión)</small></legend>
+          <div class="grid2">
+            <label>Grasa corporal (%)
+              <input name="grasa" type="number" min="3" max="70" step="0.1" inputmode="decimal" placeholder="ej. 41">
+            </label>
+            <label>RM (kcal)
+              <input name="rm" type="number" min="800" max="4000" inputmode="numeric" placeholder="ej. 1334">
+            </label>
+            <label>Grasa visceral
+              <input name="visceral" type="number" min="1" max="30" step="0.5" inputmode="decimal" placeholder="ej. 6">
+            </label>
+            <label>Músculo (%)
+              <input name="musculo" type="number" min="10" max="60" step="0.1" inputmode="decimal" placeholder="opcional">
+            </label>
+          </div>
+          <p class="muted small">Pésate siempre igual: en la mañana, en ayunas, después de ir al baño y antes de entrenar.</p>
+        </fieldset>
+        <button class="btn primary full" type="submit">Calcular mis macros</button>
+      </form>
+
+      <div class="card hidden" id="results"></div>
+
+      <div class="card hidden" id="overrideCard">
+        <label class="check"><input type="checkbox" id="useOverride"> Personalizar mis objetivos manualmente</label>
+        <div class="grid2 hidden" id="overrideFields">
+          <label>Calorías<input type="number" id="ovK" min="800" max="6000"></label>
+          <label>Proteína (g)<input type="number" id="ovP" min="0" max="500"></label>
+          <label>Carbohidratos (g)<input type="number" id="ovC" min="0" max="900"></label>
+          <label>Grasa (g)<input type="number" id="ovF" min="0" max="400"></label>
+          <button class="btn primary" type="button" id="saveOverride">Guardar</button>
+        </div>
+      </div>
+
+      <div class="card" id="accountCard">
+        <h2>Cuenta y sincronización</h2>
+        <div id="accountBody"></div>
+      </div>
+    </section>
+
+    <!-- ============ RUTINA ============ -->
+    <section id="tab-rutina" class="tab">
+      <form class="card" id="routineForm">
+        <h2>Generar rutina</h2>
+        <div class="grid2">
+          <label>Días por semana
+            <select name="dias">
+              <option value="2">2 días</option>
+              <option value="3">3 días</option>
+              <option value="4" selected>4 días</option>
+              <option value="5">5 días</option>
+              <option value="6">6 días</option>
+            </select>
+          </label>
+          <label>Nivel
+            <select name="nivel">
+              <option value="principiante">Principiante</option>
+              <option value="intermedio" selected>Intermedio</option>
+              <option value="avanzado">Avanzado</option>
+            </select>
+          </label>
+          <label>Enfoque
+            <select name="enfoque">
+              <option value="recomposicion">Recomposición (bajar grasa y ganar músculo)</option>
+              <option value="hipertrofia">Ganar músculo</option>
+              <option value="fuerza">Fuerza</option>
+              <option value="definicion">Definición / perder grasa</option>
+            </select>
+          </label>
+          <label>Equipo
+            <select name="equipo">
+              <option value="gym">Gimnasio completo</option>
+              <option value="manc">Solo mancuernas</option>
+              <option value="casa">En casa (sin equipo)</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint hidden" id="routineHint"></p>
+        <button class="btn primary full" type="submit">Generar rutina</button>
+      </form>
+      <div id="routineOut"></div>
+    </section>
+
+    <!-- ============ HISTORIAL ============ -->
+    <section id="tab-historial" class="tab">
+      <div class="card">
+        <h2>Últimos 14 días</h2>
+        <div class="stats" id="histStats"></div>
+        <div class="bars" id="histBars"></div>
+        <p class="muted small">La línea punteada es tu objetivo de calorías.</p>
+      </div>
+      <div class="card">
+        <h2>Mediciones de la báscula</h2>
+        <form id="weightForm">
+          <div class="grid2">
+            <label>Peso (kg)<input name="kg" type="number" step="0.1" min="30" max="300" inputmode="decimal" required></label>
+            <label>Grasa (%)<input name="fat" type="number" step="0.1" min="3" max="70" inputmode="decimal"></label>
+            <label>RM (kcal)<input name="rm" type="number" min="800" max="4000" inputmode="numeric"></label>
+            <label>Grasa visceral<input name="visc" type="number" step="0.5" min="1" max="30" inputmode="decimal"></label>
+            <label>Músculo (%)<input name="musc" type="number" step="0.1" min="10" max="60" inputmode="decimal"></label>
+            <button class="btn primary" type="submit">Registrar medición de hoy</button>
+          </div>
+        </form>
+        <div class="seg" id="metricSeg" style="margin-top:14px">
+          <button data-metric="kg" class="active">Peso</button>
+          <button data-metric="fat">% Grasa</button>
+          <button data-metric="lbm">Masa magra</button>
+          <button data-metric="visc">Visceral</button>
+        </div>
+        <p class="small" id="metricChange"></p>
+        <div id="weightChart"></div>
+        <ul class="list" id="weightList"></ul>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button data-tab="hoy" class="active"><span>🍽️</span>Hoy</button>
+    <button data-tab="perfil"><span>🎯</span>Macros</button>
+    <button data-tab="rutina"><span>🏋️</span>Rutina</button>
+    <button data-tab="historial"><span>📈</span>Historial</button>
+  </nav>
+
+  <!-- ============ DIÁLOGO AGREGAR ============ -->
+  <dialog id="addDlg">
+    <div class="dlg-head">
+      <h3>Agregar a <select id="dlgMeal"></select></h3>
+      <button class="icon-btn" id="dlgClose" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="seg">
+      <button class="active" data-pane="buscar">Buscar</button>
+      <button data-pane="nuevo">Nuevo alimento</button>
+    </div>
+
+    <div class="pane" id="pane-buscar">
+      <input type="search" id="foodSearch" placeholder="Buscar alimento… (ej. pollo, tortilla)" autocomplete="off">
+      <ul class="food-results" id="foodResults"></ul>
+      <div class="amount hidden" id="amountBox">
+        <div class="amount-title" id="amountTitle"></div>
+        <div class="amount-row">
+          <input type="number" id="qty" min="0" step="any" inputmode="decimal">
+          <select id="unit"></select>
+        </div>
+        <div class="preview" id="preview"></div>
+        <div class="row-btns">
+          <button class="btn" id="backToSearch">Cambiar</button>
+          <button class="btn primary" id="addFood">Agregar</button>
+        </div>
+      </div>
+    </div>
+
+    <form class="pane hidden" id="pane-nuevo">
+      <p class="muted small">Copia los datos de la etiqueta nutrimental. Se guardará en “Mis alimentos”.</p>
+      <label>Nombre<input name="n" required maxlength="60"></label>
+      <div class="grid2">
+        <label>Porción (g o ml)<input name="g" type="number" min="1" step="any" value="100" required></label>
+        <label>Nombre de porción<input name="pl" placeholder="ej. barra, vaso" maxlength="20"></label>
+        <label>Calorías<input name="k" type="number" min="0" step="any" required></label>
+        <label>Proteína (g)<input name="p" type="number" min="0" step="any" value="0"></label>
+        <label>Carbohidratos (g)<input name="c" type="number" min="0" step="any" value="0"></label>
+        <label>Grasa (g)<input name="f" type="number" min="0" step="any" value="0"></label>
+      </div>
+      <button class="btn primary full" type="submit">Guardar y seleccionar</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="data.js"></script>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+  <script src="app.js"></script>
+  <script src="sync.js"></script>
+</body>
+</html>
