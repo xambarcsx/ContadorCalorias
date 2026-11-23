@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#16a34a"/>
+  <!-- anillo de calorías -->
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#ffffff" stroke-opacity=".28" stroke-width="34"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round"
+          stroke-dasharray="707 943" transform="rotate(-90 256 256)"/>
+  <!-- mancuerna -->
+  <rect x="184" y="244" width="144" height="24" rx="12" fill="#ffffff"/>
+  <rect x="180" y="198" width="30" height="116" rx="11" fill="#ffffff"/>
+  <rect x="302" y="198" width="30" height="116" rx="11" fill="#ffffff"/>
+  <rect x="154" y="220" width="22" height="72" rx="9" fill="#ffffff"/>
+  <rect x="336" y="220" width="22" height="72" rx="9" fill="#ffffff"/>
+</svg>
